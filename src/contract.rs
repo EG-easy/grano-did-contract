@@ -1,11 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, STATE};
+use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, OwnerResponse, QueryMsg};
+use crate::state::{State, OWNERS, STATE};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:did-contract";
@@ -41,6 +41,20 @@ pub fn execute(
     match msg {
         ExecuteMsg::Increment {} => try_increment(deps),
         ExecuteMsg::Reset { count } => try_reset(deps, info, count),
+        ExecuteMsg::ChangeOwner { identity, newOwner } => {
+            try_change_owner(deps, info, identity, newOwner)
+        }
+        ExecuteMsg::SetAttribute {
+            identity,
+            name,
+            value,
+            validity,
+        } => try_set_attribute(deps, info, identity, name, value, validity),
+        ExecuteMsg::RevokeAttribute {
+            identity,
+            name,
+            value,
+        } => try_revoke_attribute(deps, info, identity, name, value),
     }
 }
 
@@ -64,16 +78,52 @@ pub fn try_reset(deps: DepsMut, info: MessageInfo, count: i32) -> Result<Respons
     Ok(Response::new().add_attribute("method", "reset"))
 }
 
+pub fn try_change_owner(
+    deps: DepsMut,
+    info: MessageInfo,
+    identity: Addr,
+    newOwner: Addr,
+) -> Result<Response, ContractError> {
+    Ok(Response::new().add_attribute("method", "reset"))
+}
+
+pub fn try_set_attribute(
+    deps: DepsMut,
+    info: MessageInfo,
+    identity: Addr,
+    name: String,
+    value: String,
+    validity: i32,
+) -> Result<Response, ContractError> {
+    Ok(Response::new().add_attribute("method", "reset"))
+}
+
+pub fn try_revoke_attribute(
+    deps: DepsMut,
+    info: MessageInfo,
+    identity: Addr,
+    name: String,
+    value: String,
+) -> Result<Response, ContractError> {
+    Ok(Response::new().add_attribute("method", "reset"))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetCount {} => to_binary(&query_count(deps)?),
+        QueryMsg::IdentityOwner { identity } => to_binary(&query_owner(deps, identity)?),
     }
 }
 
 fn query_count(deps: Deps) -> StdResult<CountResponse> {
     let state = STATE.load(deps.storage)?;
     Ok(CountResponse { count: state.count })
+}
+
+fn query_owner(deps: Deps, identity: Addr) -> StdResult<OwnerResponse> {
+    let loadedOwner = OWNERS.load(deps.storage, &identity)?;
+    Ok(OwnerResponse { owner: loadedOwner })
 }
 
 #[cfg(test)]
