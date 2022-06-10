@@ -1,8 +1,8 @@
+use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::Addr;
-use cw_storage_plus::Item;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
@@ -11,3 +11,7 @@ pub struct State {
 }
 
 pub const STATE: Item<State> = Item::new("state");
+
+pub const OWNERS: Map<&Addr, Addr> = Map::new("owner");
+pub const CHANGED: Map<&Addr, i32> = Map::new("changed");
+pub const NONCE: Map<&Addr, i32> = Map::new("nonce");
