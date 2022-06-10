@@ -1,11 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, STATE};
+use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, OwnerResponse, QueryMsg};
+use crate::state::{State, CHANGED, OWNERS, STATE};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:did-contract";
@@ -41,6 +41,21 @@ pub fn execute(
     match msg {
         ExecuteMsg::Increment {} => try_increment(deps),
         ExecuteMsg::Reset { count } => try_reset(deps, info, count),
+        ExecuteMsg::ChangeOwner {
+            identity,
+            new_owner,
+        } => try_change_owner(deps, info, identity, new_owner),
+        ExecuteMsg::SetAttribute {
+            identity,
+            name,
+            value,
+            validity,
+        } => try_set_attribute(deps, info, identity, name, value, validity),
+        ExecuteMsg::RevokeAttribute {
+            identity,
+            name,
+            value,
+        } => try_revoke_attribute(deps, info, identity, name, value),
     }
 }
 
@@ -64,16 +79,92 @@ pub fn try_reset(deps: DepsMut, info: MessageInfo, count: i32) -> Result<Respons
     Ok(Response::new().add_attribute("method", "reset"))
 }
 
+pub fn try_change_owner(
+    deps: DepsMut,
+    info: MessageInfo,
+    identity: Addr,
+    new_owner: Addr,
+) -> Result<Response, ContractError> {
+    OWNERS.update(
+        deps.storage,
+        &identity,
+        |owner: Option<Addr>| -> Result<_, ContractError> {
+            if info.sender != owner.unwrap() {
+                return Err(ContractError::Unauthorized {});
+            }
+            Ok(new_owner)
+        },
+    )?;
+
+    let res = Response::new();
+    // TODO: add attribute
+    Ok(res)
+}
+
+pub fn try_set_attribute(
+    deps: DepsMut,
+    info: MessageInfo,
+    identity: Addr,
+    name: String,
+    value: String,
+    validity: i32,
+) -> Result<Response, ContractError> {
+    CHANGED.update(
+        deps.storage,
+        &identity,
+        |changed: Option<i32>| -> Result<_, ContractError> {
+            Ok(changed.unwrap_or_default() + validity)
+        },
+    )?;
+
+    let res = Response::new()
+        .add_attribute("identity", identity)
+        .add_attribute("name", name)
+        .add_attribute("value", value)
+        .add_attribute("from", info.sender);
+    // TODO: update attribute
+    Ok(res)
+}
+
+pub fn try_revoke_attribute(
+    deps: DepsMut,
+    info: MessageInfo,
+    identity: Addr,
+    name: String,
+    value: String,
+) -> Result<Response, ContractError> {
+    CHANGED.update(
+        deps.storage,
+        &identity,
+        |changed: Option<i32>| -> Result<_, ContractError> { Ok(changed.unwrap_or_default() + 1) },
+    )?;
+    let res = Response::new()
+        .add_attribute("identity", identity)
+        .add_attribute("name", name)
+        .add_attribute("value", value)
+        .add_attribute("from", info.sender);
+    // TODO: update attribute
+    Ok(res)
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetCount {} => to_binary(&query_count(deps)?),
+        QueryMsg::IdentityOwner { identity } => to_binary(&query_owner(deps, identity)?),
     }
 }
 
 fn query_count(deps: Deps) -> StdResult<CountResponse> {
     let state = STATE.load(deps.storage)?;
     Ok(CountResponse { count: state.count })
+}
+
+fn query_owner(deps: Deps, identity: Addr) -> StdResult<OwnerResponse> {
+    let loaded_owner = OWNERS.load(deps.storage, &identity)?;
+    Ok(OwnerResponse {
+        owner: loaded_owner,
+    })
 }
 
 #[cfg(test)]
