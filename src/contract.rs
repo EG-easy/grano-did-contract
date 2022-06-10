@@ -89,8 +89,13 @@ pub fn try_change_owner(
         deps.storage,
         &identity,
         |owner: Option<Addr>| -> Result<_, ContractError> {
-            if info.sender != owner.unwrap() {
-                return Err(ContractError::Unauthorized {});
+            match owner {
+                Some(owner_address) => {
+                    if info.sender != owner_address {
+                        return Err(ContractError::Unauthorized {});
+                    }
+                }
+                None => {}
             }
             Ok(new_owner)
         },
@@ -161,10 +166,11 @@ fn query_count(deps: Deps) -> StdResult<CountResponse> {
 }
 
 fn query_owner(deps: Deps, identity: Addr) -> StdResult<OwnerResponse> {
-    let loaded_owner = OWNERS.load(deps.storage, &identity)?;
-    Ok(OwnerResponse {
-        owner: loaded_owner,
-    })
+    let loaded_owner = OWNERS.may_load(deps.storage, &identity)?;
+    match loaded_owner {
+        Some(v) => Ok(OwnerResponse { owner: v }),
+        None => Ok(OwnerResponse { owner: identity }),
+    }
 }
 
 #[cfg(test)]
@@ -235,5 +241,80 @@ mod tests {
         let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
         let value: CountResponse = from_binary(&res).unwrap();
         assert_eq!(5, value.count);
+    }
+
+    #[test]
+    fn identity_owner() {
+        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
+        let msg = InstantiateMsg { count: 17 };
+        let info = mock_info("creator", &coins(2, "token"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        let identity1 = String::from("identity0001");
+
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::IdentityOwner {
+                identity: Addr::unchecked(&identity1),
+            },
+        )
+        .unwrap();
+        let value: OwnerResponse = from_binary(&res).unwrap();
+        assert_eq!(identity1, value.owner);
+    }
+
+    #[test]
+    fn change_owner() {
+        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
+        let msg = InstantiateMsg { count: 17 };
+        let info = mock_info("creator", &coins(2, "token"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        let identity1 = String::from("identity0001");
+        let owner1 = String::from("addr0001");
+
+        // only the original identity address can change the owner at the first time
+        let auth_info = mock_info("identity0001", &coins(2, "token"));
+
+        let msg = ExecuteMsg::ChangeOwner {
+            identity: Addr::unchecked(&identity1),
+            new_owner: Addr::unchecked(&owner1),
+        };
+
+        let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
+
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::IdentityOwner {
+                identity: Addr::unchecked(&identity1),
+            },
+        )
+        .unwrap();
+        let value: OwnerResponse = from_binary(&res).unwrap();
+        assert_eq!(owner1, value.owner);
+
+        // only the owner address can change the owner
+        let auth_info = mock_info("addr0001", &coins(2, "token"));
+        let owner2 = String::from("addr0002");
+
+        let msg = ExecuteMsg::ChangeOwner {
+            identity: Addr::unchecked(&identity1),
+            new_owner: Addr::unchecked(&owner2),
+        };
+
+        let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
+
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::IdentityOwner {
+                identity: Addr::unchecked(&identity1),
+            },
+        )
+        .unwrap();
+        let value: OwnerResponse = from_binary(&res).unwrap();
+        assert_eq!(owner2, value.owner);
     }
 }
