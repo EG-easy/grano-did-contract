@@ -5,7 +5,7 @@ use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, OwnerResponse, QueryMsg};
-use crate::state::{State, OWNERS, STATE};
+use crate::state::{State, CHANGED, OWNERS, STATE};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:did-contract";
@@ -41,9 +41,10 @@ pub fn execute(
     match msg {
         ExecuteMsg::Increment {} => try_increment(deps),
         ExecuteMsg::Reset { count } => try_reset(deps, info, count),
-        ExecuteMsg::ChangeOwner { identity, newOwner } => {
-            try_change_owner(deps, info, identity, newOwner)
-        }
+        ExecuteMsg::ChangeOwner {
+            identity,
+            new_owner,
+        } => try_change_owner(deps, info, identity, new_owner),
         ExecuteMsg::SetAttribute {
             identity,
             name,
@@ -82,9 +83,22 @@ pub fn try_change_owner(
     deps: DepsMut,
     info: MessageInfo,
     identity: Addr,
-    newOwner: Addr,
+    new_owner: Addr,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("method", "reset"))
+    OWNERS.update(
+        deps.storage,
+        &identity,
+        |owner: Option<Addr>| -> Result<_, ContractError> {
+            if info.sender != owner.unwrap() {
+                return Err(ContractError::Unauthorized {});
+            }
+            Ok(new_owner)
+        },
+    )?;
+
+    let res = Response::new();
+    // TODO: add attribute
+    Ok(res)
 }
 
 pub fn try_set_attribute(
@@ -95,7 +109,21 @@ pub fn try_set_attribute(
     value: String,
     validity: i32,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("method", "reset"))
+    CHANGED.update(
+        deps.storage,
+        &identity,
+        |changed: Option<i32>| -> Result<_, ContractError> {
+            Ok(changed.unwrap_or_default() + validity)
+        },
+    )?;
+
+    let res = Response::new()
+        .add_attribute("identity", identity)
+        .add_attribute("name", name)
+        .add_attribute("value", value)
+        .add_attribute("from", info.sender);
+    // TODO: update attribute
+    Ok(res)
 }
 
 pub fn try_revoke_attribute(
@@ -105,7 +133,18 @@ pub fn try_revoke_attribute(
     name: String,
     value: String,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("method", "reset"))
+    CHANGED.update(
+        deps.storage,
+        &identity,
+        |changed: Option<i32>| -> Result<_, ContractError> { Ok(changed.unwrap_or_default() + 1) },
+    )?;
+    let res = Response::new()
+        .add_attribute("identity", identity)
+        .add_attribute("name", name)
+        .add_attribute("value", value)
+        .add_attribute("from", info.sender);
+    // TODO: update attribute
+    Ok(res)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -122,8 +161,10 @@ fn query_count(deps: Deps) -> StdResult<CountResponse> {
 }
 
 fn query_owner(deps: Deps, identity: Addr) -> StdResult<OwnerResponse> {
-    let loadedOwner = OWNERS.load(deps.storage, &identity)?;
-    Ok(OwnerResponse { owner: loadedOwner })
+    let loaded_owner = OWNERS.load(deps.storage, &identity)?;
+    Ok(OwnerResponse {
+        owner: loaded_owner,
+    })
 }
 
 #[cfg(test)]

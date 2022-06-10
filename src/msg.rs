@@ -16,7 +16,7 @@ pub enum ExecuteMsg {
     },
     ChangeOwner {
         identity: Addr,
-        newOwner: Addr,
+        new_owner: Addr,
     },
     SetAttribute {
         identity: Addr,
