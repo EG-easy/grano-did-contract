@@ -140,7 +140,8 @@ pub fn try_set_attribute(
         .add_attribute("name", name)
         .add_attribute("value", value)
         .add_attribute("validTo", env.block.time.plus_seconds(validity).to_string())
-        .add_attribute("previousChange", changed.to_string());
+        .add_attribute("previousChange", changed.to_string())
+        .add_attribute("from", info.sender);
 
     CHANGED.update(
         deps.storage,
@@ -197,7 +198,7 @@ fn query_owner(deps: Deps, identity: Addr) -> StdResult<OwnerResponse> {
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
-    use cosmwasm_std::{coins, from_binary};
+    use cosmwasm_std::{coins, from_binary, Attribute};
 
     #[test]
     fn proper_initialization() {
@@ -421,27 +422,36 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let identity1 = String::from("identity0001");
-        let owner1 = String::from("addr0001");
 
         // only the original identity address can change the owner at the first time
         let auth_info = mock_info("identity0001", &coins(2, "token"));
 
-        let msg = ExecuteMsg::ChangeOwner {
+        let msg = ExecuteMsg::SetAttribute {
             identity: Addr::unchecked(&identity1),
-            new_owner: Addr::unchecked(&owner1),
+            name: String::from("identity_name"),
+            value: String::from("abc"),
+            validity: 0,
         };
 
-        let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
 
-        let res = query(
-            deps.as_ref(),
-            mock_env(),
-            QueryMsg::IdentityOwner {
-                identity: Addr::unchecked(&identity1),
-            },
-        )
-        .unwrap();
-        let value: OwnerResponse = from_binary(&res).unwrap();
-        assert_eq!(owner1, value.owner);
+        // check name attribute
+        let name_attribute: Vec<Attribute> = res
+            .clone()
+            .attributes
+            .into_iter()
+            .filter(|attribute| attribute.key == "name")
+            .collect();
+
+        assert_eq!(name_attribute[0].value, "identity_name");
+
+        // check value attribute
+        let value_attribute: Vec<Attribute> = res
+            .attributes
+            .into_iter()
+            .filter(|attribute| attribute.key == "value")
+            .collect();
+
+        assert_eq!(value_attribute[0].value, "abc");
     }
 }
