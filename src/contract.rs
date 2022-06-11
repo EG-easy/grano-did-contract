@@ -34,7 +34,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
@@ -44,7 +44,7 @@ pub fn execute(
         ExecuteMsg::ChangeOwner {
             identity,
             new_owner,
-        } => try_change_owner(deps, info, identity, new_owner),
+        } => try_change_owner(deps, env, info, identity, new_owner),
         ExecuteMsg::SetAttribute {
             identity,
             name,
@@ -81,6 +81,7 @@ pub fn try_reset(deps: DepsMut, info: MessageInfo, count: i32) -> Result<Respons
 
 pub fn try_change_owner(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     identity: Addr,
     new_owner: Addr,
@@ -101,7 +102,7 @@ pub fn try_change_owner(
                     }
                 }
             }
-            Ok(new_owner)
+            Ok(new_owner.clone())
         },
     )?;
 
@@ -109,8 +110,16 @@ pub fn try_change_owner(
     let changed = loaded_changed.unwrap_or(0);
 
     let res = Response::new()
-        .add_attribute("identity", identity)
-        .add_attribute("changed", changed.to_string());
+        .add_attribute("identity", identity.clone())
+        .add_attribute("changed", changed.to_string())
+        .add_attribute("new_owner", new_owner);
+
+    CHANGED.update(
+        deps.storage,
+        &identity,
+        |_changed: Option<u64>| -> Result<_, ContractError> { Ok(env.block.height) },
+    )?;
+
     Ok(res)
 }
 
@@ -120,12 +129,12 @@ pub fn try_set_attribute(
     identity: Addr,
     name: String,
     value: String,
-    validity: i32,
+    validity: u64,
 ) -> Result<Response, ContractError> {
     CHANGED.update(
         deps.storage,
         &identity,
-        |changed: Option<i32>| -> Result<_, ContractError> {
+        |changed: Option<u64>| -> Result<_, ContractError> {
             Ok(changed.unwrap_or_default() + validity)
         },
     )?;
@@ -149,7 +158,7 @@ pub fn try_revoke_attribute(
     CHANGED.update(
         deps.storage,
         &identity,
-        |changed: Option<i32>| -> Result<_, ContractError> { Ok(changed.unwrap_or_default() + 1) },
+        |changed: Option<u64>| -> Result<_, ContractError> { Ok(changed.unwrap_or_default() + 1) },
     )?;
     let res = Response::new()
         .add_attribute("identity", identity)
