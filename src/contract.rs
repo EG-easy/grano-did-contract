@@ -106,10 +106,7 @@ pub fn try_change_owner(
     )?;
 
     let loaded_changed = CHANGED.may_load(deps.storage, &identity)?;
-    let changed = match loaded_changed {
-        Some(v) => v,
-        None => 0,
-    };
+    let changed = loaded_changed.unwrap_or(0);
 
     let res = Response::new()
         .add_attribute("identity", identity)
@@ -423,7 +420,6 @@ mod tests {
         };
 
         let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
-        print!("res: {:?}", _res);
 
         let res = query(
             deps.as_ref(),
