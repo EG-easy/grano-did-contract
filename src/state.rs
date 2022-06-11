@@ -13,5 +13,5 @@ pub struct State {
 pub const STATE: Item<State> = Item::new("state");
 
 pub const OWNERS: Map<&Addr, Addr> = Map::new("owner");
-pub const CHANGED: Map<&Addr, i32> = Map::new("changed");
-pub const NONCE: Map<&Addr, i32> = Map::new("nonce");
+pub const CHANGED: Map<&Addr, u64> = Map::new("changed");
+pub const NONCE: Map<&Addr, u64> = Map::new("nonce");

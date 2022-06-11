@@ -22,7 +22,7 @@ pub enum ExecuteMsg {
         identity: Addr,
         name: String,  // TODO: change to byte
         value: String, // TODO: change to byte
-        validity: i32,
+        validity: u64,
     },
     RevokeAttribute {
         identity: Addr,
