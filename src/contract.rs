@@ -55,7 +55,7 @@ pub fn execute(
             identity,
             name,
             value,
-        } => try_revoke_attribute(deps, info, identity, name, value),
+        } => try_revoke_attribute(deps, env, info, identity, name, value),
     }
 }
 
@@ -169,22 +169,43 @@ pub fn try_set_attribute(
 
 pub fn try_revoke_attribute(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     identity: Addr,
     name: String,
     value: String,
 ) -> Result<Response, ContractError> {
+    // check owner
+    let loaded_owner = OWNERS.may_load(deps.storage, &identity)?;
+    match loaded_owner {
+        Some(owner_address) => {
+            if info.sender != owner_address {
+                return Err(ContractError::Unauthorized {});
+            }
+        }
+        None => {
+            if info.sender != identity {
+                return Err(ContractError::Unauthorized {});
+            }
+        }
+    }
+    let loaded_changed = CHANGED.may_load(deps.storage, &identity)?;
+    let changed = loaded_changed.unwrap_or(0);
+
+    let res = Response::new()
+        .add_attribute("identity", identity.clone())
+        .add_attribute("name", name)
+        .add_attribute("value", value)
+        .add_attribute("validTo", 0.to_string())
+        .add_attribute("previousChange", changed.to_string())
+        .add_attribute("from", info.sender);
+
     CHANGED.update(
         deps.storage,
         &identity,
-        |changed: Option<u64>| -> Result<_, ContractError> { Ok(changed.unwrap_or_default() + 1) },
+        |_changed: Option<u64>| -> Result<_, ContractError> { Ok(env.block.height) },
     )?;
-    let res = Response::new()
-        .add_attribute("identity", identity)
-        .add_attribute("name", name)
-        .add_attribute("value", value)
-        .add_attribute("from", info.sender);
-    // TODO: update attribute
+
     Ok(res)
 }
 
@@ -468,5 +489,88 @@ mod tests {
             .collect();
 
         assert_eq!(value_attribute[0].value, "abc");
+    }
+
+    #[test]
+    fn revoke_attribute() {
+        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
+        let msg = InstantiateMsg { count: 17 };
+        let info = mock_info("creator", &coins(2, "token"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        let identity1 = String::from("identity0001");
+
+        // only the original identity address can change the owner at the first time
+        let auth_info = mock_info("identity0001", &coins(2, "token"));
+
+        let msg = ExecuteMsg::SetAttribute {
+            identity: Addr::unchecked(&identity1),
+            name: String::from("identity_name"),
+            value: String::from("abc"),
+            validity: 0,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
+
+        // check name attribute
+        let name_attribute: Vec<Attribute> = res
+            .clone()
+            .attributes
+            .into_iter()
+            .filter(|attribute| attribute.key == "name")
+            .collect();
+
+        assert_eq!(name_attribute[0].value, "identity_name");
+
+        // check value attribute
+        let value_attribute: Vec<Attribute> = res
+            .attributes
+            .into_iter()
+            .filter(|attribute| attribute.key == "value")
+            .collect();
+
+        assert_eq!(value_attribute[0].value, "abc");
+
+        //revoke_attribute test
+        let msg = ExecuteMsg::RevokeAttribute {
+            identity: Addr::unchecked(&identity1),
+            name: String::from("identity_name"),
+            value: String::from("xyz"),
+        };
+
+        // only the original identity address can change the owner at the first time
+        let auth_info = mock_info("identity0001", &coins(2, "token"));
+        let res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
+
+        println!("res: {:?} ", res);
+
+        // check name attribute
+        let name_attribute: Vec<Attribute> = res
+            .clone()
+            .attributes
+            .into_iter()
+            .filter(|attribute| attribute.key == "name")
+            .collect();
+
+        assert_eq!(name_attribute[0].value, "identity_name");
+
+        // check value attribute
+        let value_attribute: Vec<Attribute> = res
+            .clone()
+            .attributes
+            .into_iter()
+            .filter(|attribute| attribute.key == "value")
+            .collect();
+
+        assert_eq!(value_attribute[0].value, "xyz");
+
+        // check validity attribute
+        let value_attribute: Vec<Attribute> = res
+            .attributes
+            .into_iter()
+            .filter(|attribute| attribute.key == "validTo")
+            .collect();
+
+        assert_eq!(value_attribute[0].value, "0");
     }
 }
