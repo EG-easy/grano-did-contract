@@ -50,7 +50,7 @@ pub fn execute(
             name,
             value,
             validity,
-        } => try_set_attribute(deps, info, identity, name, value, validity),
+        } => try_set_attribute(deps, env, info, identity, name, value, validity),
         ExecuteMsg::RevokeAttribute {
             identity,
             name,
@@ -111,8 +111,8 @@ pub fn try_change_owner(
 
     let res = Response::new()
         .add_attribute("identity", identity.clone())
-        .add_attribute("changed", changed.to_string())
-        .add_attribute("new_owner", new_owner);
+        .add_attribute("owner", new_owner)
+        .add_attribute("previousChange", changed.to_string());
 
     CHANGED.update(
         deps.storage,
@@ -125,26 +125,29 @@ pub fn try_change_owner(
 
 pub fn try_set_attribute(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     identity: Addr,
     name: String,
     value: String,
     validity: u64,
 ) -> Result<Response, ContractError> {
+    let loaded_changed = CHANGED.may_load(deps.storage, &identity)?;
+    let changed = loaded_changed.unwrap_or(0);
+
+    let res = Response::new()
+        .add_attribute("identity", identity.clone())
+        .add_attribute("name", name)
+        .add_attribute("value", value)
+        .add_attribute("validTo", env.block.time.plus_seconds(validity).to_string())
+        .add_attribute("previousChange", changed.to_string());
+
     CHANGED.update(
         deps.storage,
         &identity,
-        |changed: Option<u64>| -> Result<_, ContractError> {
-            Ok(changed.unwrap_or_default() + validity)
-        },
+        |_changed: Option<u64>| -> Result<_, ContractError> { Ok(env.block.height) },
     )?;
 
-    let res = Response::new()
-        .add_attribute("identity", identity)
-        .add_attribute("name", name)
-        .add_attribute("value", value)
-        .add_attribute("from", info.sender);
-    // TODO: update attribute
     Ok(res)
 }
 
