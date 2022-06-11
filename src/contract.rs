@@ -132,6 +132,21 @@ pub fn try_set_attribute(
     value: String,
     validity: u64,
 ) -> Result<Response, ContractError> {
+    // check owner
+    let loaded_owner = OWNERS.may_load(deps.storage, &identity)?;
+    match loaded_owner {
+        Some(owner_address) => {
+            if info.sender != owner_address {
+                return Err(ContractError::Unauthorized {});
+            }
+        }
+        None => {
+            if info.sender != identity {
+                return Err(ContractError::Unauthorized {});
+            }
+        }
+    }
+
     let loaded_changed = CHANGED.may_load(deps.storage, &identity)?;
     let changed = loaded_changed.unwrap_or(0);
 
