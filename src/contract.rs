@@ -492,6 +492,29 @@ mod tests {
     }
 
     #[test]
+    fn set_attribute_by_attacker() {
+        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
+        let msg = InstantiateMsg { count: 17 };
+        let info = mock_info("creator", &coins(2, "token"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        let identity1 = String::from("identity0001");
+
+        // only the original identity address can change the owner at the first time
+        let auth_info = mock_info("attacker", &coins(2, "token"));
+
+        let msg = ExecuteMsg::SetAttribute {
+            identity: Addr::unchecked(&identity1),
+            name: String::from("identity_name"),
+            value: String::from("abc"),
+            validity: 0,
+        };
+
+        let err = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
     fn revoke_attribute() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
         let msg = InstantiateMsg { count: 17 };
@@ -572,5 +595,58 @@ mod tests {
             .collect();
 
         assert_eq!(value_attribute[0].value, "0");
+    }
+
+    #[test]
+    fn revoke_attribute_by_attacker() {
+        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
+        let msg = InstantiateMsg { count: 17 };
+        let info = mock_info("creator", &coins(2, "token"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        let identity1 = String::from("identity0001");
+
+        // only the original identity address can change the owner at the first time
+        let auth_info = mock_info("identity0001", &coins(2, "token"));
+
+        let msg = ExecuteMsg::SetAttribute {
+            identity: Addr::unchecked(&identity1),
+            name: String::from("identity_name"),
+            value: String::from("abc"),
+            validity: 0,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
+
+        // check name attribute
+        let name_attribute: Vec<Attribute> = res
+            .clone()
+            .attributes
+            .into_iter()
+            .filter(|attribute| attribute.key == "name")
+            .collect();
+
+        assert_eq!(name_attribute[0].value, "identity_name");
+
+        // check value attribute
+        let value_attribute: Vec<Attribute> = res
+            .attributes
+            .into_iter()
+            .filter(|attribute| attribute.key == "value")
+            .collect();
+
+        assert_eq!(value_attribute[0].value, "abc");
+
+        //revoke_attribute test
+        let msg = ExecuteMsg::RevokeAttribute {
+            identity: Addr::unchecked(&identity1),
+            name: String::from("identity_name"),
+            value: String::from("xyz"),
+        };
+
+        // only the original identity address can change the owner at the first time
+        let auth_info = mock_info("attacker", &coins(2, "token"));
+        let err = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
     }
 }
