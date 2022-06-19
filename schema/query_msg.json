@@ -5,18 +5,6 @@
     {
       "type": "object",
       "required": [
-        "get_count"
-      ],
-      "properties": {
-        "get_count": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "identity_owner"
       ],
       "properties": {
