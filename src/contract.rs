@@ -204,7 +204,7 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
 
-        let msg = InstantiateMsg { count: 17 };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
@@ -215,7 +215,7 @@ mod tests {
     #[test]
     fn identity_owner() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
-        let msg = InstantiateMsg { count: 17 };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn change_owner() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
-        let msg = InstantiateMsg { count: 17 };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -290,7 +290,7 @@ mod tests {
     #[test]
     fn change_owner_by_attacker() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
-        let msg = InstantiateMsg { count: 17 };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -365,7 +365,7 @@ mod tests {
     #[test]
     fn set_attribute() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
-        let msg = InstantiateMsg { count: 17 };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -406,7 +406,7 @@ mod tests {
     #[test]
     fn set_attribute_by_attacker() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
-        let msg = InstantiateMsg { count: 17 };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -429,7 +429,7 @@ mod tests {
     #[test]
     fn revoke_attribute() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
-        let msg = InstantiateMsg { count: 17 };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -512,7 +512,7 @@ mod tests {
     #[test]
     fn revoke_attribute_by_attacker() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
-        let msg = InstantiateMsg { count: 17 };
+        let msg = InstantiateMsg {};
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
