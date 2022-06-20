@@ -197,8 +197,9 @@ fn query_owner(deps: Deps, identity: Addr) -> StdResult<OwnerResponse> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::helper::get_attribute_value;
     use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
-    use cosmwasm_std::{coins, from_binary, Attribute};
+    use cosmwasm_std::{coins, from_binary};
 
     #[test]
     fn proper_initialization() {
@@ -384,23 +385,14 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
 
         // check name attribute
-        let name_attribute: Vec<Attribute> = res
-            .clone()
-            .attributes
-            .into_iter()
-            .filter(|attribute| attribute.key == "name")
-            .collect();
+        let name = get_attribute_value(res.clone(), "name");
 
-        assert_eq!(name_attribute[0].value, "identity_name");
+        assert_eq!(name, "identity_name");
 
         // check value attribute
-        let value_attribute: Vec<Attribute> = res
-            .attributes
-            .into_iter()
-            .filter(|attribute| attribute.key == "value")
-            .collect();
+        let value = get_attribute_value(res.clone(), "value");
 
-        assert_eq!(value_attribute[0].value, "abc");
+        assert_eq!(value, "abc");
     }
 
     #[test]
@@ -448,23 +440,14 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
 
         // check name attribute
-        let name_attribute: Vec<Attribute> = res
-            .clone()
-            .attributes
-            .into_iter()
-            .filter(|attribute| attribute.key == "name")
-            .collect();
+        let name = get_attribute_value(res.clone(), "name");
 
-        assert_eq!(name_attribute[0].value, "identity_name");
+        assert_eq!(name, "identity_name");
 
         // check value attribute
-        let value_attribute: Vec<Attribute> = res
-            .attributes
-            .into_iter()
-            .filter(|attribute| attribute.key == "value")
-            .collect();
+        let value = get_attribute_value(res.clone(), "value");
 
-        assert_eq!(value_attribute[0].value, "abc");
+        assert_eq!(value, "abc");
 
         //revoke_attribute test
         let msg = ExecuteMsg::RevokeAttribute {
@@ -480,33 +463,19 @@ mod tests {
         println!("res: {:?} ", res);
 
         // check name attribute
-        let name_attribute: Vec<Attribute> = res
-            .clone()
-            .attributes
-            .into_iter()
-            .filter(|attribute| attribute.key == "name")
-            .collect();
+        let name = get_attribute_value(res.clone(), "name");
 
-        assert_eq!(name_attribute[0].value, "identity_name");
+        assert_eq!(name, "identity_name");
 
         // check value attribute
-        let value_attribute: Vec<Attribute> = res
-            .clone()
-            .attributes
-            .into_iter()
-            .filter(|attribute| attribute.key == "value")
-            .collect();
+        let value = get_attribute_value(res.clone(), "value");
 
-        assert_eq!(value_attribute[0].value, "xyz");
+        assert_eq!(value, "xyz");
 
         // check validity attribute
-        let value_attribute: Vec<Attribute> = res
-            .attributes
-            .into_iter()
-            .filter(|attribute| attribute.key == "validTo")
-            .collect();
+        let validity = get_attribute_value(res.clone(), "validTo");
 
-        assert_eq!(value_attribute[0].value, "0");
+        assert_eq!(validity, "0");
     }
 
     #[test]
@@ -531,23 +500,14 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
 
         // check name attribute
-        let name_attribute: Vec<Attribute> = res
-            .clone()
-            .attributes
-            .into_iter()
-            .filter(|attribute| attribute.key == "name")
-            .collect();
+        let name = get_attribute_value(res.clone(), "name");
 
-        assert_eq!(name_attribute[0].value, "identity_name");
+        assert_eq!(name, "identity_name");
 
         // check value attribute
-        let value_attribute: Vec<Attribute> = res
-            .attributes
-            .into_iter()
-            .filter(|attribute| attribute.key == "value")
-            .collect();
+        let value = get_attribute_value(res.clone(), "value");
 
-        assert_eq!(value_attribute[0].value, "abc");
+        assert_eq!(value, "abc");
 
         //revoke_attribute test
         let msg = ExecuteMsg::RevokeAttribute {
