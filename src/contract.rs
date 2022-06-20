@@ -4,6 +4,7 @@ use cosmwasm_std::{to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Res
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
+use crate::helper::only_identity_owner;
 use crate::msg::{ExecuteMsg, InstantiateMsg, OwnerResponse, QueryMsg};
 use crate::state::{CHANGED, OWNERS};
 
@@ -59,19 +60,9 @@ pub fn try_change_owner(
     OWNERS.update(
         deps.storage,
         &identity,
-        |owner: Option<Addr>| -> Result<_, ContractError> {
-            match owner {
-                Some(owner_address) => {
-                    if info.sender != owner_address {
-                        return Err(ContractError::Unauthorized {});
-                    }
-                }
-                None => {
-                    if info.sender != identity {
-                        return Err(ContractError::Unauthorized {});
-                    }
-                }
-            }
+        |loaded_owner: Option<Addr>| -> Result<_, ContractError> {
+            only_identity_owner(&info.sender, &identity, loaded_owner)?;
+
             Ok(new_owner.clone())
         },
     )?;
@@ -104,18 +95,7 @@ pub fn try_set_attribute(
 ) -> Result<Response, ContractError> {
     // check owner
     let loaded_owner = OWNERS.may_load(deps.storage, &identity)?;
-    match loaded_owner {
-        Some(owner_address) => {
-            if info.sender != owner_address {
-                return Err(ContractError::Unauthorized {});
-            }
-        }
-        None => {
-            if info.sender != identity {
-                return Err(ContractError::Unauthorized {});
-            }
-        }
-    }
+    only_identity_owner(&info.sender, &identity, loaded_owner)?;
 
     let loaded_changed = CHANGED.may_load(deps.storage, &identity)?;
     let changed = loaded_changed.unwrap_or(0);
@@ -147,18 +127,8 @@ pub fn try_revoke_attribute(
 ) -> Result<Response, ContractError> {
     // check owner
     let loaded_owner = OWNERS.may_load(deps.storage, &identity)?;
-    match loaded_owner {
-        Some(owner_address) => {
-            if info.sender != owner_address {
-                return Err(ContractError::Unauthorized {});
-            }
-        }
-        None => {
-            if info.sender != identity {
-                return Err(ContractError::Unauthorized {});
-            }
-        }
-    }
+    only_identity_owner(&info.sender, &identity, loaded_owner)?;
+
     let loaded_changed = CHANGED.may_load(deps.storage, &identity)?;
     let changed = loaded_changed.unwrap_or(0);
 
