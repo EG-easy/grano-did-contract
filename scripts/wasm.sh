@@ -7,7 +7,7 @@ CONFIG=~/.wasmd/config
 TOKEN_DENOM=uwasm
 
 # const
-TXFLAG="--from=eg -y --keyring-backend=test --output=json --node=http://127.0.0.1:26657 --chain-id=$NETWORK --gas-prices 0.001$TOKEN_DENOM --gas auto --gas-adjustment 1.3"
+TXFLAG="--from=eg1 -y --keyring-backend=test --output=json --node=http://127.0.0.1:26657 --chain-id=$NETWORK --gas-prices 0.001$TOKEN_DENOM --gas auto --gas-adjustment 1.3"
 
 # upload
 RES=$($DAEMON tx wasm store target/wasm32-unknown-unknown/release/did_contract.wasm $TXFLAG)
@@ -20,7 +20,7 @@ $DAEMON query wasm list-contract-by-code $CODE_ID --node=http://127.0.0.1:26657 
 
 # init
 MSG='{}'
-$DAEMON tx wasm instantiate $CODE_ID "$MSG" --label="contract1" --admin $($DAEMON keys show eg --keyring-backend=test -a) $TXFLAG
+$DAEMON tx wasm instantiate $CODE_ID "$MSG" --label="contract1" --admin $($DAEMON keys show eg1 --keyring-backend=test -a) $TXFLAG
 sleep 6
 CONTRACT=$($DAEMON query wasm list-contract-by-code $CODE_ID --node=http://127.0.0.1:26657 --output=json | jq -r '.contracts[-1]')
 echo "-> CONTRACT: $CONTRACT"
@@ -36,7 +36,7 @@ query_contract () {
 }
 
 # query
-ADDR=$($DAEMON keys show -a eg --keyring-backend=test)
+ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
 MSG=$(echo '{ "controller": { "identifier": "'$ADDR'" } }' | jq)
 query_contract "$MSG"
 
@@ -46,7 +46,7 @@ MSG=$(echo '{"change_controller": {"identifier": "'$ADDR'", "new_controller": "'
 execute_contract "$MSG"
 
 # query
-ADDR=$($DAEMON keys show -a eg --keyring-backend=test)
+ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
 MSG=$(echo '{ "controller": { "identifier": "'$ADDR'" } }' | jq)
 query_contract "$MSG"
 
