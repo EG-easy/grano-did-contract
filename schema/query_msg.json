@@ -5,16 +5,16 @@
     {
       "type": "object",
       "required": [
-        "identity_owner"
+        "controller"
       ],
       "properties": {
-        "identity_owner": {
+        "controller": {
           "type": "object",
           "required": [
-            "identity"
+            "identifier"
           ],
           "properties": {
-            "identity": {
+            "identifier": {
               "$ref": "#/definitions/Addr"
             }
           }

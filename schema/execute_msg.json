@@ -5,20 +5,20 @@
     {
       "type": "object",
       "required": [
-        "change_owner"
+        "change_controller"
       ],
       "properties": {
-        "change_owner": {
+        "change_controller": {
           "type": "object",
           "required": [
-            "identity",
-            "new_owner"
+            "identifier",
+            "new_controller"
           ],
           "properties": {
-            "identity": {
+            "identifier": {
               "$ref": "#/definitions/Addr"
             },
-            "new_owner": {
+            "new_controller": {
               "$ref": "#/definitions/Addr"
             }
           }
@@ -35,13 +35,13 @@
         "set_attribute": {
           "type": "object",
           "required": [
-            "identity",
+            "identifier",
             "name",
             "validity",
             "value"
           ],
           "properties": {
-            "identity": {
+            "identifier": {
               "$ref": "#/definitions/Addr"
             },
             "name": {
@@ -69,12 +69,12 @@
         "revoke_attribute": {
           "type": "object",
           "required": [
-            "identity",
+            "identifier",
             "name",
             "value"
           ],
           "properties": {
-            "identity": {
+            "identifier": {
               "$ref": "#/definitions/Addr"
             },
             "name": {
