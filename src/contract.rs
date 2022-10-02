@@ -4,9 +4,9 @@ use cosmwasm_std::{to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Res
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::helper::only_identity_owner;
-use crate::msg::{ExecuteMsg, InstantiateMsg, OwnerResponse, QueryMsg};
-use crate::state::{CHANGED, OWNERS};
+use crate::helper::only_controller;
+use crate::msg::{ControllerResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{CHANGED, CONTROLLERS};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:did-contract";
@@ -32,52 +32,52 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::ChangeOwner {
-            identity,
-            new_owner,
-        } => try_change_owner(deps, env, info, identity, new_owner),
+        ExecuteMsg::ChangeController {
+            identifier,
+            new_controller,
+        } => try_change_controller(deps, env, info, identifier, new_controller),
         ExecuteMsg::SetAttribute {
-            identity,
+            identifier,
             name,
             value,
             validity,
-        } => try_set_attribute(deps, env, info, identity, name, value, validity),
+        } => try_set_attribute(deps, env, info, identifier, name, value, validity),
         ExecuteMsg::RevokeAttribute {
-            identity,
+            identifier,
             name,
             value,
-        } => try_revoke_attribute(deps, env, info, identity, name, value),
+        } => try_revoke_attribute(deps, env, info, identifier, name, value),
     }
 }
 
-pub fn try_change_owner(
+pub fn try_change_controller(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    identity: Addr,
-    new_owner: Addr,
+    identifier: Addr,
+    new_controller: Addr,
 ) -> Result<Response, ContractError> {
-    OWNERS.update(
+    CONTROLLERS.update(
         deps.storage,
-        &identity,
-        |loaded_owner: Option<Addr>| -> Result<_, ContractError> {
-            only_identity_owner(&info.sender, &identity, loaded_owner)?;
+        &identifier,
+        |loaded_controller: Option<Addr>| -> Result<_, ContractError> {
+            only_controller(&info.sender, &identifier, loaded_controller)?;
 
-            Ok(new_owner.clone())
+            Ok(new_controller.clone())
         },
     )?;
 
-    let loaded_changed = CHANGED.may_load(deps.storage, &identity)?;
+    let loaded_changed = CHANGED.may_load(deps.storage, &identifier)?;
     let changed = loaded_changed.unwrap_or(0);
 
     let res = Response::new()
-        .add_attribute("identity", identity.clone())
-        .add_attribute("owner", new_owner)
+        .add_attribute("identifier", identifier.clone())
+        .add_attribute("controller", new_controller)
         .add_attribute("previousChange", changed.to_string());
 
     CHANGED.update(
         deps.storage,
-        &identity,
+        &identifier,
         |_changed: Option<u64>| -> Result<_, ContractError> { Ok(env.block.height) },
     )?;
 
@@ -88,20 +88,20 @@ pub fn try_set_attribute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    identity: Addr,
+    identifier: Addr,
     name: String,
     value: String,
     validity: u64,
 ) -> Result<Response, ContractError> {
-    // check owner
-    let loaded_owner = OWNERS.may_load(deps.storage, &identity)?;
-    only_identity_owner(&info.sender, &identity, loaded_owner)?;
+    // check controller
+    let loaded_controller = CONTROLLERS.may_load(deps.storage, &identifier)?;
+    only_controller(&info.sender, &identifier, loaded_controller)?;
 
-    let loaded_changed = CHANGED.may_load(deps.storage, &identity)?;
+    let loaded_changed = CHANGED.may_load(deps.storage, &identifier)?;
     let changed = loaded_changed.unwrap_or(0);
 
     let res = Response::new()
-        .add_attribute("identity", identity.clone())
+        .add_attribute("identifier", identifier.clone())
         .add_attribute("name", name)
         .add_attribute("value", value)
         .add_attribute("validTo", env.block.time.plus_seconds(validity).to_string())
@@ -110,7 +110,7 @@ pub fn try_set_attribute(
 
     CHANGED.update(
         deps.storage,
-        &identity,
+        &identifier,
         |_changed: Option<u64>| -> Result<_, ContractError> { Ok(env.block.height) },
     )?;
 
@@ -121,19 +121,19 @@ pub fn try_revoke_attribute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    identity: Addr,
+    identifier: Addr,
     name: String,
     value: String,
 ) -> Result<Response, ContractError> {
-    // check owner
-    let loaded_owner = OWNERS.may_load(deps.storage, &identity)?;
-    only_identity_owner(&info.sender, &identity, loaded_owner)?;
+    // check controller
+    let loaded_controller = CONTROLLERS.may_load(deps.storage, &identifier)?;
+    only_controller(&info.sender, &identifier, loaded_controller)?;
 
-    let loaded_changed = CHANGED.may_load(deps.storage, &identity)?;
+    let loaded_changed = CHANGED.may_load(deps.storage, &identifier)?;
     let changed = loaded_changed.unwrap_or(0);
 
     let res = Response::new()
-        .add_attribute("identity", identity.clone())
+        .add_attribute("identifier", identifier.clone())
         .add_attribute("name", name)
         .add_attribute("value", value)
         .add_attribute("validTo", 0.to_string())
@@ -142,7 +142,7 @@ pub fn try_revoke_attribute(
 
     CHANGED.update(
         deps.storage,
-        &identity,
+        &identifier,
         |_changed: Option<u64>| -> Result<_, ContractError> { Ok(env.block.height) },
     )?;
 
@@ -152,15 +152,17 @@ pub fn try_revoke_attribute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::IdentityOwner { identity } => to_binary(&query_owner(deps, identity)?),
+        QueryMsg::Controller { identifier } => to_binary(&query_controller(deps, identifier)?),
     }
 }
 
-fn query_owner(deps: Deps, identity: Addr) -> StdResult<OwnerResponse> {
-    let loaded_owner = OWNERS.may_load(deps.storage, &identity)?;
-    match loaded_owner {
-        Some(v) => Ok(OwnerResponse { owner: v }),
-        None => Ok(OwnerResponse { owner: identity }),
+fn query_controller(deps: Deps, identifier: Addr) -> StdResult<ControllerResponse> {
+    let loaded_controller = CONTROLLERS.may_load(deps.storage, &identifier)?;
+    match loaded_controller {
+        Some(v) => Ok(ControllerResponse { controller: v }),
+        None => Ok(ControllerResponse {
+            controller: identifier,
+        }),
     }
 }
 
@@ -184,42 +186,42 @@ mod tests {
     }
 
     #[test]
-    fn identity_owner() {
+    fn controller() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
         let msg = InstantiateMsg {};
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let identity1 = String::from("identity0001");
+        let identifier = String::from("identifier0001");
 
         let res = query(
             deps.as_ref(),
             mock_env(),
-            QueryMsg::IdentityOwner {
-                identity: Addr::unchecked(&identity1),
+            QueryMsg::Controller {
+                identifier: Addr::unchecked(&identifier),
             },
         )
         .unwrap();
-        let value: OwnerResponse = from_binary(&res).unwrap();
-        assert_eq!(identity1, value.owner);
+        let value: ControllerResponse = from_binary(&res).unwrap();
+        assert_eq!(identifier, value.controller);
     }
 
     #[test]
-    fn change_owner() {
+    fn change_controller() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
         let msg = InstantiateMsg {};
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let identity1 = String::from("identity0001");
-        let owner1 = String::from("addr0001");
+        let identifier1 = String::from("identifier0001");
+        let controller1 = String::from("addr0001");
 
-        // only the original identity address can change the owner at the first time
-        let auth_info = mock_info("identity0001", &coins(2, "token"));
+        // only the original identifier address can change the controller at the first time
+        let auth_info = mock_info("identifier0001", &coins(2, "token"));
 
-        let msg = ExecuteMsg::ChangeOwner {
-            identity: Addr::unchecked(&identity1),
-            new_owner: Addr::unchecked(&owner1),
+        let msg = ExecuteMsg::ChangeController {
+            identifier: Addr::unchecked(&identifier1),
+            new_controller: Addr::unchecked(&controller1),
         };
 
         let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
@@ -227,21 +229,21 @@ mod tests {
         let res = query(
             deps.as_ref(),
             mock_env(),
-            QueryMsg::IdentityOwner {
-                identity: Addr::unchecked(&identity1),
+            QueryMsg::Controller {
+                identifier: Addr::unchecked(&identifier1),
             },
         )
         .unwrap();
-        let value: OwnerResponse = from_binary(&res).unwrap();
-        assert_eq!(owner1, value.owner);
+        let value: ControllerResponse = from_binary(&res).unwrap();
+        assert_eq!(controller1, value.controller);
 
-        // only the owner address can change the owner
+        // only the controller address can change the controller
         let auth_info = mock_info("addr0001", &coins(2, "token"));
-        let owner2 = String::from("addr0002");
+        let controller2 = String::from("addr0002");
 
-        let msg = ExecuteMsg::ChangeOwner {
-            identity: Addr::unchecked(&identity1),
-            new_owner: Addr::unchecked(&owner2),
+        let msg = ExecuteMsg::ChangeController {
+            identifier: Addr::unchecked(&identifier1),
+            new_controller: Addr::unchecked(&controller2),
         };
 
         let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
@@ -249,31 +251,31 @@ mod tests {
         let res = query(
             deps.as_ref(),
             mock_env(),
-            QueryMsg::IdentityOwner {
-                identity: Addr::unchecked(&identity1),
+            QueryMsg::Controller {
+                identifier: Addr::unchecked(&identifier1),
             },
         )
         .unwrap();
-        let value: OwnerResponse = from_binary(&res).unwrap();
-        assert_eq!(owner2, value.owner);
+        let value: ControllerResponse = from_binary(&res).unwrap();
+        assert_eq!(controller2, value.controller);
     }
 
     #[test]
-    fn change_owner_by_attacker() {
+    fn change_controller_by_attacker() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
         let msg = InstantiateMsg {};
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let identity1 = String::from("identity0001");
-        let owner1 = String::from("addr0001");
+        let identifier1 = String::from("identifier0001");
+        let controller1 = String::from("addr0001");
 
-        // only the original identity address can change the owner at the first time
+        // only the original identifier address can change the controller at the first time
         let auth_info = mock_info("attacker", &coins(2, "token"));
 
-        let msg = ExecuteMsg::ChangeOwner {
-            identity: Addr::unchecked(&identity1),
-            new_owner: Addr::unchecked(&owner1),
+        let msg = ExecuteMsg::ChangeController {
+            identifier: Addr::unchecked(&identifier1),
+            new_controller: Addr::unchecked(&controller1),
         };
 
         let err = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap_err();
@@ -282,20 +284,20 @@ mod tests {
         let res = query(
             deps.as_ref(),
             mock_env(),
-            QueryMsg::IdentityOwner {
-                identity: Addr::unchecked(&identity1),
+            QueryMsg::Controller {
+                identifier: Addr::unchecked(&identifier1),
             },
         )
         .unwrap();
-        let value: OwnerResponse = from_binary(&res).unwrap();
-        assert_eq!(identity1, value.owner);
+        let value: ControllerResponse = from_binary(&res).unwrap();
+        assert_eq!(identifier1, value.controller);
 
-        // only the original identity address can change the owner at the first time
-        let auth_info = mock_info("identity0001", &coins(2, "token"));
+        // only the original identifier address can change the controller at the first time
+        let auth_info = mock_info("identifier0001", &coins(2, "token"));
 
-        let msg = ExecuteMsg::ChangeOwner {
-            identity: Addr::unchecked(&identity1),
-            new_owner: Addr::unchecked(&owner1),
+        let msg = ExecuteMsg::ChangeController {
+            identifier: Addr::unchecked(&identifier1),
+            new_controller: Addr::unchecked(&controller1),
         };
 
         let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
@@ -303,19 +305,19 @@ mod tests {
         let res = query(
             deps.as_ref(),
             mock_env(),
-            QueryMsg::IdentityOwner {
-                identity: Addr::unchecked(&identity1),
+            QueryMsg::Controller {
+                identifier: Addr::unchecked(&identifier1),
             },
         )
         .unwrap();
-        let value: OwnerResponse = from_binary(&res).unwrap();
-        assert_eq!(owner1, value.owner);
+        let value: ControllerResponse = from_binary(&res).unwrap();
+        assert_eq!(controller1, value.controller);
 
         let auth_info = mock_info("attacker", &coins(2, "token"));
 
-        let msg = ExecuteMsg::ChangeOwner {
-            identity: Addr::unchecked(&identity1),
-            new_owner: Addr::unchecked(&identity1),
+        let msg = ExecuteMsg::ChangeController {
+            identifier: Addr::unchecked(&identifier1),
+            new_controller: Addr::unchecked(&identifier1),
         };
 
         let err = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap_err();
@@ -324,13 +326,13 @@ mod tests {
         let res = query(
             deps.as_ref(),
             mock_env(),
-            QueryMsg::IdentityOwner {
-                identity: Addr::unchecked(&identity1),
+            QueryMsg::Controller {
+                identifier: Addr::unchecked(&identifier1),
             },
         )
         .unwrap();
-        let value: OwnerResponse = from_binary(&res).unwrap();
-        assert_eq!(owner1, value.owner);
+        let value: ControllerResponse = from_binary(&res).unwrap();
+        assert_eq!(controller1, value.controller);
     }
 
     #[test]
@@ -340,14 +342,14 @@ mod tests {
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let identity1 = String::from("identity0001");
+        let identifier1 = String::from("identifier0001");
 
-        // only the original identity address can change the owner at the first time
-        let auth_info = mock_info("identity0001", &coins(2, "token"));
+        // only the original identifier address can change the controller at the first time
+        let auth_info = mock_info("identifier0001", &coins(2, "token"));
 
         let msg = ExecuteMsg::SetAttribute {
-            identity: Addr::unchecked(&identity1),
-            name: String::from("identity_name"),
+            identifier: Addr::unchecked(&identifier1),
+            name: String::from("identifier_name"),
             value: String::from("abc"),
             validity: 0,
         };
@@ -357,7 +359,7 @@ mod tests {
         // check name attribute
         let name = get_attribute_value(res.clone(), "name");
 
-        assert_eq!(name, "identity_name");
+        assert_eq!(name, "identifier_name");
 
         // check value attribute
         let value = get_attribute_value(res.clone(), "value");
@@ -372,14 +374,14 @@ mod tests {
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let identity1 = String::from("identity0001");
+        let identifier1 = String::from("identifier0001");
 
-        // only the original identity address can change the owner at the first time
+        // only the original identifier address can change the controller at the first time
         let auth_info = mock_info("attacker", &coins(2, "token"));
 
         let msg = ExecuteMsg::SetAttribute {
-            identity: Addr::unchecked(&identity1),
-            name: String::from("identity_name"),
+            identifier: Addr::unchecked(&identifier1),
+            name: String::from("identifier_name"),
             value: String::from("abc"),
             validity: 0,
         };
@@ -395,14 +397,14 @@ mod tests {
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let identity1 = String::from("identity0001");
+        let identifier1 = String::from("identifier0001");
 
-        // only the original identity address can change the owner at the first time
-        let auth_info = mock_info("identity0001", &coins(2, "token"));
+        // only the original identifier address can change the controller at the first time
+        let auth_info = mock_info("identifier0001", &coins(2, "token"));
 
         let msg = ExecuteMsg::SetAttribute {
-            identity: Addr::unchecked(&identity1),
-            name: String::from("identity_name"),
+            identifier: Addr::unchecked(&identifier1),
+            name: String::from("identifier_name"),
             value: String::from("abc"),
             validity: 0,
         };
@@ -412,7 +414,7 @@ mod tests {
         // check name attribute
         let name = get_attribute_value(res.clone(), "name");
 
-        assert_eq!(name, "identity_name");
+        assert_eq!(name, "identifier_name");
 
         // check value attribute
         let value = get_attribute_value(res.clone(), "value");
@@ -421,21 +423,19 @@ mod tests {
 
         //revoke_attribute test
         let msg = ExecuteMsg::RevokeAttribute {
-            identity: Addr::unchecked(&identity1),
-            name: String::from("identity_name"),
+            identifier: Addr::unchecked(&identifier1),
+            name: String::from("identifier_name"),
             value: String::from("xyz"),
         };
 
-        // only the original identity address can change the owner at the first time
-        let auth_info = mock_info("identity0001", &coins(2, "token"));
+        // only the original identifier address can change the controller at the first time
+        let auth_info = mock_info("identifier0001", &coins(2, "token"));
         let res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
-
-        println!("res: {:?} ", res);
 
         // check name attribute
         let name = get_attribute_value(res.clone(), "name");
 
-        assert_eq!(name, "identity_name");
+        assert_eq!(name, "identifier_name");
 
         // check value attribute
         let value = get_attribute_value(res.clone(), "value");
@@ -455,14 +455,14 @@ mod tests {
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let identity1 = String::from("identity0001");
+        let identifier1 = String::from("identifier0001");
 
-        // only the original identity address can change the owner at the first time
-        let auth_info = mock_info("identity0001", &coins(2, "token"));
+        // only the original identifier address can change the controller at the first time
+        let auth_info = mock_info("identifier0001", &coins(2, "token"));
 
         let msg = ExecuteMsg::SetAttribute {
-            identity: Addr::unchecked(&identity1),
-            name: String::from("identity_name"),
+            identifier: Addr::unchecked(&identifier1),
+            name: String::from("identifier_name"),
             value: String::from("abc"),
             validity: 0,
         };
@@ -472,7 +472,7 @@ mod tests {
         // check name attribute
         let name = get_attribute_value(res.clone(), "name");
 
-        assert_eq!(name, "identity_name");
+        assert_eq!(name, "identifier_name");
 
         // check value attribute
         let value = get_attribute_value(res.clone(), "value");
@@ -481,12 +481,12 @@ mod tests {
 
         //revoke_attribute test
         let msg = ExecuteMsg::RevokeAttribute {
-            identity: Addr::unchecked(&identity1),
-            name: String::from("identity_name"),
+            identifier: Addr::unchecked(&identifier1),
+            name: String::from("identifier_name"),
             value: String::from("xyz"),
         };
 
-        // only the original identity address can change the owner at the first time
+        // only the original identifier address can change the controller at the first time
         let auth_info = mock_info("attacker", &coins(2, "token"));
         let err = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap_err();
         assert_eq!(err, ContractError::Unauthorized {});

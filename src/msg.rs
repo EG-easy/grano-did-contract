@@ -8,18 +8,18 @@ pub struct InstantiateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    ChangeOwner {
-        identity: Addr,
-        new_owner: Addr,
+    ChangeController {
+        identifier: Addr,
+        new_controller: Addr,
     },
     SetAttribute {
-        identity: Addr,
+        identifier: Addr,
         name: String,  // TODO: change to byte
         value: String, // TODO: change to byte
         validity: u64,
     },
     RevokeAttribute {
-        identity: Addr,
+        identifier: Addr,
         name: String,  // TODO: change to byte
         value: String, // TODO: change to byte
     },
@@ -28,11 +28,11 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    IdentityOwner { identity: Addr },
+    Controller { identifier: Addr },
 }
 
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct OwnerResponse {
-    pub owner: Addr,
+pub struct ControllerResponse {
+    pub controller: Addr,
 }

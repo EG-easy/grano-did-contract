@@ -1,12 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OwnerResponse",
+  "title": "ControllerResponse",
   "type": "object",
   "required": [
-    "owner"
+    "controller"
   ],
   "properties": {
-    "owner": {
+    "controller": {
       "$ref": "#/definitions/Addr"
     }
   },

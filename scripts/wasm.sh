@@ -37,17 +37,17 @@ query_contract () {
 
 # query
 ADDR=$($DAEMON keys show -a eg --keyring-backend=test)
-MSG=$(echo '{ "identity_owner": { "identity": "'$ADDR'" } }' | jq)
+MSG=$(echo '{ "controller": { "identifier": "'$ADDR'" } }' | jq)
 query_contract "$MSG"
 
 # execute
 ADDR2=$($DAEMON keys show -a eg2 --keyring-backend=test)
-MSG=$(echo '{"change_owner": {"identity": "'$ADDR'", "new_owner": "'$ADDR2'"}}' | jq )
+MSG=$(echo '{"change_controller": {"identifier": "'$ADDR'", "new_controller": "'$ADDR2'"}}' | jq )
 execute_contract "$MSG"
 
 # query
 ADDR=$($DAEMON keys show -a eg --keyring-backend=test)
-MSG=$(echo '{ "identity_owner": { "identity": "'$ADDR'" } }' | jq)
+MSG=$(echo '{ "controller": { "identifier": "'$ADDR'" } }' | jq)
 query_contract "$MSG"
 
 # contract version
