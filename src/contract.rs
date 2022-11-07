@@ -1,12 +1,16 @@
 #[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    Timestamp,
+};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::helper::only_controller;
-use crate::msg::{AttributeResponse, ControllerResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{Attribute, ATTRIBUTES, CHANGED, CONTROLLERS};
+use crate::msg::{
+    AttributeResponse, ControllerResponse, ExecuteMsg, InstantiateMsg, QueryMsg, ValidToResponse,
+};
+use crate::state::{Attribute, ATTRIBUTES, CHANGED, CONTROLLERS, VALIDITIES};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:did-contract";
@@ -104,8 +108,13 @@ pub fn try_set_attribute(
     let mut attribute = loaded_attribute.unwrap_or(Attribute { values: vec![] });
 
     if attribute.values.iter().any(|v| v == &value) {
-        // TODO: Update Validity only
-        println!("same value is found!: {}", &value);
+        VALIDITIES.update(
+            deps.storage,
+            (&identifier, &name, &value),
+            |_valid_to: Option<Timestamp>| -> Result<_, ContractError> {
+                Ok(env.block.time.plus_seconds(validity))
+            },
+        )?;
     } else {
         ATTRIBUTES.update(
             deps.storage,
@@ -115,14 +124,24 @@ pub fn try_set_attribute(
                 Ok(attribute)
             },
         )?;
-        // TODO: Update Validity later
+
+        VALIDITIES.update(
+            deps.storage,
+            (&identifier, &name, &value),
+            |_valid_to: Option<Timestamp>| -> Result<_, ContractError> {
+                Ok(env.block.time.plus_seconds(validity))
+            },
+        )?;
     }
 
     let res = Response::new()
         .add_attribute("identifier", identifier.clone())
         .add_attribute("name", name)
         .add_attribute("value", value)
-        .add_attribute("validTo", env.block.time.plus_seconds(validity).to_string())
+        .add_attribute(
+            "validTo",
+            env.block.time.plus_seconds(validity).seconds().to_string(),
+        )
         .add_attribute("previousChange", changed.to_string())
         .add_attribute("from", info.sender);
 
@@ -174,6 +193,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Attribute { identifier, name } => {
             to_binary(&query_attribute(deps, identifier, name)?)
         }
+        QueryMsg::ValidTo {
+            identifier,
+            name,
+            value,
+        } => to_binary(&query_valid_to(deps, identifier, name, value)?),
     }
 }
 
@@ -192,6 +216,21 @@ fn query_attribute(deps: Deps, identifier: Addr, name: String) -> StdResult<Attr
     match loaded_attribute {
         Some(v) => Ok(AttributeResponse { values: v.values }),
         None => Ok(AttributeResponse { values: vec![] }),
+    }
+}
+
+fn query_valid_to(
+    deps: Deps,
+    identifier: Addr,
+    name: String,
+    value: String,
+) -> StdResult<ValidToResponse> {
+    let loaded_attribute = VALIDITIES.may_load(deps.storage, (&identifier, &name, &value))?;
+    match loaded_attribute {
+        Some(v) => Ok(ValidToResponse { valid_to: v }),
+        None => Ok(ValidToResponse {
+            valid_to: Timestamp::from_seconds(0),
+        }),
     }
 }
 
@@ -426,6 +465,21 @@ mod tests {
         let value: AttributeResponse = from_binary(&res).unwrap();
         assert_eq!(value.values, ["abc", "def"]);
 
+        // check validTo
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::ValidTo {
+                identifier: Addr::unchecked(&identifier1),
+                name: String::from("identifier_name"),
+                value: String::from("abc"),
+            },
+        )
+        .unwrap();
+
+        let value: ValidToResponse = from_binary(&res).unwrap();
+        assert_ne!(value.valid_to.seconds(), 0);
+
         // set attribute again
         let msg = ExecuteMsg::SetAttribute {
             identifier: Addr::unchecked(&identifier1),
@@ -456,6 +510,21 @@ mod tests {
 
         let value: AttributeResponse = from_binary(&res).unwrap();
         assert_eq!(value.values, ["abc", "def"]);
+
+        // check validTo
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::ValidTo {
+                identifier: Addr::unchecked(&identifier1),
+                name: String::from("identifier_name"),
+                value: String::from("def"),
+            },
+        )
+        .unwrap();
+
+        let value: ValidToResponse = from_binary(&res).unwrap();
+        assert_ne!(value.valid_to.seconds(), 0);
     }
 
     #[test]
