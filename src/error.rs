@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{Addr, StdError};
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -8,6 +8,13 @@ pub enum ContractError {
 
     #[error("Unauthorized")]
     Unauthorized {},
+
+    #[error("Invalid (identifier, name) pair: {identifier:?}, {name:?}, {value:?}")]
+    InvalidKeyPair {
+        identifier: Addr,
+        name: String,
+        value: String,
+    },
 
     #[error("Custom Error val: {val:?}")]
     CustomError { val: String },

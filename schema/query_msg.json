@@ -21,6 +21,58 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "attribute"
+      ],
+      "properties": {
+        "attribute": {
+          "type": "object",
+          "required": [
+            "identifier",
+            "name"
+          ],
+          "properties": {
+            "identifier": {
+              "$ref": "#/definitions/Addr"
+            },
+            "name": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "valid_to"
+      ],
+      "properties": {
+        "valid_to": {
+          "type": "object",
+          "required": [
+            "identifier",
+            "name",
+            "value"
+          ],
+          "properties": {
+            "identifier": {
+              "$ref": "#/definitions/Addr"
+            },
+            "name": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
