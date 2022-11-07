@@ -5,8 +5,8 @@ use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::helper::only_controller;
-use crate::msg::{ControllerResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{CHANGED, CONTROLLERS};
+use crate::msg::{AttributeResponse, ControllerResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{Attribute, ATTRIBUTES, CHANGED, CONTROLLERS};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:did-contract";
@@ -100,6 +100,24 @@ pub fn try_set_attribute(
     let loaded_changed = CHANGED.may_load(deps.storage, &identifier)?;
     let changed = loaded_changed.unwrap_or(0);
 
+    let loaded_attribute = ATTRIBUTES.may_load(deps.storage, (&identifier, &name))?;
+    let mut attribute = loaded_attribute.unwrap_or(Attribute { values: vec![] });
+
+    if attribute.values.iter().any(|v| v == &value) {
+        // TODO: Update Validity only
+        println!("same value is found!: {}", &value);
+    } else {
+        ATTRIBUTES.update(
+            deps.storage,
+            (&identifier, &name),
+            |_attribute: Option<Attribute>| -> Result<_, ContractError> {
+                attribute.values.push(value.clone());
+                Ok(attribute)
+            },
+        )?;
+        // TODO: Update Validity later
+    }
+
     let res = Response::new()
         .add_attribute("identifier", identifier.clone())
         .add_attribute("name", name)
@@ -153,6 +171,9 @@ pub fn try_revoke_attribute(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Controller { identifier } => to_binary(&query_controller(deps, identifier)?),
+        QueryMsg::Attribute { identifier, name } => {
+            to_binary(&query_attribute(deps, identifier, name)?)
+        }
     }
 }
 
@@ -163,6 +184,14 @@ fn query_controller(deps: Deps, identifier: Addr) -> StdResult<ControllerRespons
         None => Ok(ControllerResponse {
             controller: identifier,
         }),
+    }
+}
+
+fn query_attribute(deps: Deps, identifier: Addr, name: String) -> StdResult<AttributeResponse> {
+    let loaded_attribute = ATTRIBUTES.may_load(deps.storage, (&identifier, &name))?;
+    match loaded_attribute {
+        Some(v) => Ok(AttributeResponse { values: v.values }),
+        None => Ok(AttributeResponse { values: vec![] }),
     }
 }
 
@@ -354,7 +383,7 @@ mod tests {
             validity: 0,
         };
 
-        let res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), auth_info.clone(), msg).unwrap();
 
         // check name attribute
         let name = get_attribute_value(res.clone(), "name");
@@ -365,6 +394,68 @@ mod tests {
         let value = get_attribute_value(res.clone(), "value");
 
         assert_eq!(value, "abc");
+
+        // set attribute again
+        let msg = ExecuteMsg::SetAttribute {
+            identifier: Addr::unchecked(&identifier1),
+            name: String::from("identifier_name"),
+            value: String::from("def"),
+            validity: 0,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), auth_info.clone(), msg).unwrap();
+
+        // check name attribute
+        let name = get_attribute_value(res.clone(), "name");
+        assert_eq!(name, "identifier_name");
+
+        // check value attribute
+        let value = get_attribute_value(res.clone(), "value");
+        assert_eq!(value, "def");
+
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::Attribute {
+                identifier: Addr::unchecked(&identifier1),
+                name: String::from("identifier_name"),
+            },
+        )
+        .unwrap();
+
+        let value: AttributeResponse = from_binary(&res).unwrap();
+        assert_eq!(value.values, ["abc", "def"]);
+
+        // set attribute again
+        let msg = ExecuteMsg::SetAttribute {
+            identifier: Addr::unchecked(&identifier1),
+            name: String::from("identifier_name"),
+            value: String::from("abc"),
+            validity: 0,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), auth_info.clone(), msg).unwrap();
+
+        // check name attribute
+        let name = get_attribute_value(res.clone(), "name");
+        assert_eq!(name, "identifier_name");
+
+        // check value attribute
+        let value = get_attribute_value(res.clone(), "value");
+        assert_eq!(value, "abc");
+
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::Attribute {
+                identifier: Addr::unchecked(&identifier1),
+                name: String::from("identifier_name"),
+            },
+        )
+        .unwrap();
+
+        let value: AttributeResponse = from_binary(&res).unwrap();
+        assert_eq!(value.values, ["abc", "def"]);
     }
 
     #[test]

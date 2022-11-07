@@ -29,10 +29,16 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Controller { identifier: Addr },
+    Attribute { identifier: Addr, name: String },
 }
 
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct ControllerResponse {
     pub controller: Addr,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct AttributeResponse {
+    pub values: Vec<String>,
 }
