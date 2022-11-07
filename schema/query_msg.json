@@ -45,6 +45,34 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "valid_to"
+      ],
+      "properties": {
+        "valid_to": {
+          "type": "object",
+          "required": [
+            "identifier",
+            "name",
+            "value"
+          ],
+          "properties": {
+            "identifier": {
+              "$ref": "#/definitions/Addr"
+            },
+            "name": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
