@@ -35,6 +35,50 @@ query_contract () {
   $DAEMON query wasm contract-state smart $CONTRACT "$1" --output=json | jq
 }
 
+### Set Attribute ###
+# query
+ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
+MSG=$(echo '{ "attribute": { "identifier": "'$ADDR'", "name": "service" } }' | jq)
+query_contract "$MSG"
+
+# execute
+ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
+MSG=$(echo '{ "set_attribute": { "identifier": "'$ADDR'", "name": "service", "value": "github", "validity": 1000 } }' | jq)
+execute_contract "$MSG"
+
+# query
+ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
+MSG=$(echo '{ "attribute": { "identifier": "'$ADDR'", "name": "service" } }' | jq)
+query_contract "$MSG"
+
+# execute
+ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
+MSG=$(echo '{ "set_attribute": { "identifier": "'$ADDR'", "name": "service", "value": "twitter", "validity": 1000 } }' | jq)
+execute_contract "$MSG"
+
+# query
+ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
+MSG=$(echo '{ "attribute": { "identifier": "'$ADDR'", "name": "service" } }' | jq)
+query_contract "$MSG"
+
+# query
+ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
+MSG=$(echo '{ "valid_to": { "identifier": "'$ADDR'", "name": "service", "value": "github" } }' | jq)
+query_contract "$MSG"
+
+
+### Revoke Attribute ###
+# execute
+ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
+MSG=$(echo '{ "revoke_attribute": { "identifier": "'$ADDR'", "name": "service", "value": "github" } }' | jq)
+execute_contract "$MSG"
+
+# query
+ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
+MSG=$(echo '{ "valid_to": { "identifier": "'$ADDR'", "name": "service", "value": "github" } }' | jq)
+query_contract "$MSG"
+
+### Change Controller ###
 # query
 ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
 MSG=$(echo '{ "controller": { "identifier": "'$ADDR'" } }' | jq)
