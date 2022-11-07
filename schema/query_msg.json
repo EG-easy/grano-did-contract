@@ -21,6 +21,30 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "attribute"
+      ],
+      "properties": {
+        "attribute": {
+          "type": "object",
+          "required": [
+            "identifier",
+            "name"
+          ],
+          "properties": {
+            "identifier": {
+              "$ref": "#/definitions/Addr"
+            },
+            "name": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
