@@ -169,6 +169,35 @@ pub fn try_revoke_attribute(
     let loaded_changed = CHANGED.may_load(deps.storage, &identifier)?;
     let changed = loaded_changed.unwrap_or(0);
 
+    let loaded_attribute = ATTRIBUTES.may_load(deps.storage, (&identifier, &name))?;
+
+    let attribute = match loaded_attribute {
+        Some(v) => v,
+        None => {
+            return Err(ContractError::InvalidKeyPair {
+                identifier,
+                name,
+                value,
+            })
+        }
+    };
+
+    if attribute.values.iter().any(|v| v == &value) {
+        VALIDITIES.update(
+            deps.storage,
+            (&identifier, &name, &value),
+            |_valid_to: Option<Timestamp>| -> Result<_, ContractError> {
+                Ok(Timestamp::from_seconds(0))
+            },
+        )?;
+    } else {
+        return Err(ContractError::InvalidKeyPair {
+            identifier,
+            name,
+            value,
+        });
+    }
+
     let res = Response::new()
         .add_attribute("identifier", identifier.clone())
         .add_attribute("name", name)
@@ -585,7 +614,7 @@ mod tests {
         let msg = ExecuteMsg::RevokeAttribute {
             identifier: Addr::unchecked(&identifier1),
             name: String::from("identifier_name"),
-            value: String::from("xyz"),
+            value: String::from("abc"),
         };
 
         // only the original identifier address can change the controller at the first time
@@ -600,12 +629,45 @@ mod tests {
         // check value attribute
         let value = get_attribute_value(res.clone(), "value");
 
-        assert_eq!(value, "xyz");
+        assert_eq!(value, "abc");
 
         // check validity attribute
         let validity = get_attribute_value(res.clone(), "validTo");
 
         assert_eq!(validity, "0");
+
+        // check validTo
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::ValidTo {
+                identifier: Addr::unchecked(&identifier1),
+                name: String::from("identifier_name"),
+                value: String::from("abc"),
+            },
+        )
+        .unwrap();
+
+        let value: ValidToResponse = from_binary(&res).unwrap();
+        assert_eq!(value.valid_to.seconds(), 0);
+
+        //revoke_attribute test again with wrong value
+        let msg = ExecuteMsg::RevokeAttribute {
+            identifier: Addr::unchecked(&identifier1),
+            name: String::from("identifier_name"),
+            value: String::from("xyz"),
+        };
+
+        let auth_info = mock_info("identifier0001", &coins(2, "token"));
+        let err = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::InvalidKeyPair {
+                identifier: Addr::unchecked(&identifier1),
+                name: String::from("identifier_name"),
+                value: String::from("xyz"),
+            }
+        );
     }
 
     #[test]
