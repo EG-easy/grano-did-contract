@@ -227,7 +227,11 @@ The code at [grano-did-resolver](https://github.com/EG-easy/grano-did-resolver) 
 
 
 **[1]** <https://www.w3.org/TR/did-core>
+
 **[2]** <https://github.com/EG-easy/grano-did-resolver>
+
 **[3]** <https://github.com/EG-easy/grano-did-client>
+
 **[4]** <https://github.com/EG-easy/grano-did-event-exporter>
+
 **[5]** <https://github.com/EG-easy/grano-did-node>
