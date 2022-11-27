@@ -27,21 +27,75 @@ sh scripts/wasm.sh
 
 ## Msg Type
 
-### Controller
-```
+### Query
+
+#### controller
+
+```json
 {
 	"controller": {
-		"identifier": "wasm1fp7rrdjn4rxjqt2x23kpju3t9rd5hdkf2f0yyq"
+		"identifier": "grano14fsulwpdj9wmjchsjzuze0k37qvw7n7am3reev"
 	}
 }
 ```
 
-### Change Controller
+#### attribute
+
+```json
+{
+	"attribute": {
+		"identifier": "grano14fsulwpdj9wmjchsjzuze0k37qvw7n7am3reev",
+		"name": "service"
+	}
+}
 ```
+
+#### validTo
+
+```json
+{
+	"valid_to": {
+		"identifier": "grano14fsulwpdj9wmjchsjzuze0k37qvw7n7am3reev",
+		"name": "service",
+		"value": "github"
+	}
+}
+```
+
+### Execute
+
+#### changeController
+
+```json
 {
 	"change_controller": {
-		"identifier": "wasm1fp7rrdjn4rxjqt2x23kpju3t9rd5hdkf2f0yyq",
-		"new_controller": "wasm1rhhjhf4wmsu7nl07ftxk9h6ks3ffled9y2kn7y"
+		"identifier": "grano14fsulwpdj9wmjchsjzuze0k37qvw7n7am3reev",
+		"new_controller": "grano1m2pz9nj72lj2yxnpcmxqwfwk50v35gq7wd399m"
+	}
+}
+```
+
+#### setAttribute
+
+```json
+{
+	"set_attribute": {
+		"identifier": "grano14fsulwpdj9wmjchsjzuze0k37qvw7n7am3reev",
+		"name": "service",
+		"value": "github",
+		"validity": 1000
+	}
+}
+```
+
+#### revokeAttribute
+
+```json
+{
+	"revoke_attribute": {
+		"identifier": "grano14fsulwpdj9wmjchsjzuze0k37qvw7n7am3reev",
+		"name": "service",
+		"value": "github"
 	}
 }
 ```
