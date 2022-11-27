@@ -1,10 +1,10 @@
 #!/bin/bash
 
-NETWORK=did-1
-DAEMON=wasmd
-HOME_DIR=~/.wasmd
-CONFIG=~/.wasmd/config
-TOKEN_DENOM=uwasm
+NETWORK=grano-1
+DAEMON=granod
+HOME_DIR=~/.granod
+CONFIG=~/.granod/config
+TOKEN_DENOM=ugrano
 
 # const
 TXFLAG="--from=eg1 -y --keyring-backend=test --output=json --node=http://127.0.0.1:26657 --chain-id=$NETWORK --gas-prices 0.001$TOKEN_DENOM --gas auto --gas-adjustment 1.3"
@@ -14,7 +14,7 @@ RES=$($DAEMON tx wasm store target/wasm32-unknown-unknown/release/did_contract.w
 sleep 6
 
 TX=$(echo $RES | jq -r '.txhash')
-CODE_ID=$($DAEMON query tx $TX --output=json | jq -r '.logs[0].events[1].attributes[0].value')
+CODE_ID=$($DAEMON query tx $TX --output=json | jq -r '.logs[0].events[1].attributes[1].value')
 echo "-> CODE_ID: $CODE_ID"
 $DAEMON query wasm list-contract-by-code $CODE_ID --node=http://127.0.0.1:26657 --output=json
 
@@ -39,11 +39,14 @@ query_contract () {
 # query
 ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
 MSG=$(echo '{ "attribute": { "identifier": "'$ADDR'", "name": "service" } }' | jq)
+
+echo $MSG
 query_contract "$MSG"
 
 # execute
 ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
 MSG=$(echo '{ "set_attribute": { "identifier": "'$ADDR'", "name": "service", "value": "github", "validity": 1000 } }' | jq)
+echo $MSG
 execute_contract "$MSG"
 
 # query
@@ -64,6 +67,7 @@ query_contract "$MSG"
 # query
 ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
 MSG=$(echo '{ "valid_to": { "identifier": "'$ADDR'", "name": "service", "value": "github" } }' | jq)
+echo $MSG
 query_contract "$MSG"
 
 
@@ -71,6 +75,7 @@ query_contract "$MSG"
 # execute
 ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
 MSG=$(echo '{ "revoke_attribute": { "identifier": "'$ADDR'", "name": "service", "value": "github" } }' | jq)
+echo $MSG
 execute_contract "$MSG"
 
 # query
@@ -82,11 +87,13 @@ query_contract "$MSG"
 # query
 ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
 MSG=$(echo '{ "controller": { "identifier": "'$ADDR'" } }' | jq)
+echo $MSG
 query_contract "$MSG"
 
 # execute
 ADDR2=$($DAEMON keys show -a eg2 --keyring-backend=test)
 MSG=$(echo '{"change_controller": {"identifier": "'$ADDR'", "new_controller": "'$ADDR2'"}}' | jq )
+echo $MSG
 execute_contract "$MSG"
 
 # query
