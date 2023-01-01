@@ -75,6 +75,7 @@ pub fn try_change_controller(
     let changed = loaded_changed.unwrap_or(0);
 
     let res = Response::new()
+        .add_attribute("executeMsg", "changeController")
         .add_attribute("identifier", identifier.clone())
         .add_attribute("controller", new_controller)
         .add_attribute("previousChange", changed.to_string());
@@ -135,6 +136,7 @@ pub fn try_set_attribute(
     }
 
     let res = Response::new()
+        .add_attribute("executeMsg", "setAttribute")
         .add_attribute("identifier", identifier.clone())
         .add_attribute("name", name)
         .add_attribute("value", value)
@@ -199,6 +201,7 @@ pub fn try_revoke_attribute(
     }
 
     let res = Response::new()
+        .add_attribute("executeMsg", "revokeAttribute")
         .add_attribute("identifier", identifier.clone())
         .add_attribute("name", name)
         .add_attribute("value", value)
