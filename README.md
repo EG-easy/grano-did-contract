@@ -62,6 +62,16 @@ sh scripts/wasm.sh
 }
 ```
 
+#### changed
+
+```json
+{
+	"changed": {
+		"identifier": "grano14fsulwpdj9wmjchsjzuze0k37qvw7n7am3reev"
+	}
+}
+```
+
 ### Execute
 
 #### changeController
