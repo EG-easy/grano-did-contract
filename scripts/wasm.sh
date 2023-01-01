@@ -101,5 +101,10 @@ ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
 MSG=$(echo '{ "controller": { "identifier": "'$ADDR'" } }' | jq)
 query_contract "$MSG"
 
+# query
+ADDR=$($DAEMON keys show -a eg1 --keyring-backend=test)
+MSG=$(echo '{ "changed": { "identifier": "'$ADDR'" } }' | jq)
+query_contract "$MSG"
+
 # contract version
 $DAEMON query wasm contract-state raw $CONTRACT 636F6E74726163745F696E666F --output=json | jq  -r .data | base64 -d | jq
