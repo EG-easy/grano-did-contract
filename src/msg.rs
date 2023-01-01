@@ -40,6 +40,9 @@ pub enum QueryMsg {
         name: String,
         value: String,
     },
+    Changed {
+        identifier: Addr,
+    },
 }
 
 // We define a custom struct for each query response
@@ -56,4 +59,8 @@ pub struct AttributeResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct ValidToResponse {
     pub valid_to: Timestamp,
+}
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct ChangedResponse {
+    pub block: u64,
 }

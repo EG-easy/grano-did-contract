@@ -8,7 +8,8 @@ use cw2::set_contract_version;
 use crate::error::ContractError;
 use crate::helper::only_controller;
 use crate::msg::{
-    AttributeResponse, ControllerResponse, ExecuteMsg, InstantiateMsg, QueryMsg, ValidToResponse,
+    AttributeResponse, ChangedResponse, ControllerResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+    ValidToResponse,
 };
 use crate::state::{Attribute, ATTRIBUTES, CHANGED, CONTROLLERS, VALIDITIES};
 
@@ -230,6 +231,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             name,
             value,
         } => to_binary(&query_valid_to(deps, identifier, name, value)?),
+        QueryMsg::Changed { identifier } => to_binary(&query_changed(deps, identifier)?),
     }
 }
 
@@ -263,6 +265,14 @@ fn query_valid_to(
         None => Ok(ValidToResponse {
             valid_to: Timestamp::from_seconds(0),
         }),
+    }
+}
+
+fn query_changed(deps: Deps, identifier: Addr) -> StdResult<ChangedResponse> {
+    let loaded_changed = CHANGED.may_load(deps.storage, &identifier)?;
+    match loaded_changed {
+        Some(v) => Ok(ChangedResponse { block: v }),
+        None => Ok(ChangedResponse { block: 0 }),
     }
 }
 
@@ -304,6 +314,17 @@ mod tests {
         .unwrap();
         let value: ControllerResponse = from_binary(&res).unwrap();
         assert_eq!(identifier, value.controller);
+
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::Changed {
+                identifier: Addr::unchecked(&identifier),
+            },
+        )
+        .unwrap();
+        let value: ChangedResponse = from_binary(&res).unwrap();
+        assert_eq!(0, value.block);
     }
 
     #[test]
@@ -358,6 +379,17 @@ mod tests {
         .unwrap();
         let value: ControllerResponse = from_binary(&res).unwrap();
         assert_eq!(controller2, value.controller);
+
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::Changed {
+                identifier: Addr::unchecked(&identifier1),
+            },
+        )
+        .unwrap();
+        let value: ChangedResponse = from_binary(&res).unwrap();
+        assert_ne!(0, value.block);
     }
 
     #[test]
