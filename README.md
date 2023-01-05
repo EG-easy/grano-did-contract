@@ -1,8 +1,8 @@
-# did-contract
+# Grano DID Contract
 
-did-contract is cosmwasm based did (decentralized identifier) implementation inspired by [ERC1056 DIDRegistry implementation](https://github.com/uport-project/ethr-did-registry/blob/develop/contracts/EthereumDIDRegistry.sol).
+Grano DID Contract is cosmwasm based did (decentralized identifier) implementation inspired by [ERC1056 DIDRegistry implementation](https://github.com/uport-project/ethr-did-registry/blob/develop/contracts/EthereumDIDRegistry.sol).
 
-**WARNING**: did-contract is under VERY ACTIVE DEVELOPMENT and should be treated as pre-alpha software. This means it is not meant to be run in production, its APIs are subject to change without warning and should not be relied upon, and it should not be used to hold any value.
+**WARNING**: Grano DID Contract is under VERY ACTIVE DEVELOPMENT and should be treated as pre-alpha software. This means it is not meant to be run in production, its APIs are subject to change without warning and should not be relied upon, and it should not be used to hold any value.
 
 ## Test Contract
 ```
@@ -15,6 +15,7 @@ sh scripts/build.sh
 ```
 
 ## Start local chain
+It is required to install [grano-did-node](https://github.com/EG-easy/grano-did-node) first.
 ```
 sh scripts/start.sh
 ```
@@ -23,7 +24,6 @@ sh scripts/start.sh
 ```
 sh scripts/wasm.sh
 ```
-
 
 ## Msg Type
 
@@ -109,3 +109,10 @@ sh scripts/wasm.sh
 	}
 }
 ```
+
+## References
+- https://github.com/eg-easy/grano-did
+- https://github.com/EG-easy/grano-did-client
+- https://github.com/EG-easy/grano-did-exporter
+- https://github.com/EG-easy/grano-did-node
+- https://github.com/EG-easy/grano-did-resolver
