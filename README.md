@@ -15,6 +15,7 @@ sh scripts/build.sh
 ```
 
 ## Start local chain
+It is required to install [grano-did-node](https://github.com/EG-easy/grano-did-node) first.
 ```
 sh scripts/start.sh
 ```
@@ -23,7 +24,6 @@ sh scripts/start.sh
 ```
 sh scripts/wasm.sh
 ```
-
 
 ## Msg Type
 
@@ -109,3 +109,10 @@ sh scripts/wasm.sh
 	}
 }
 ```
+
+## References
+- https://github.com/eg-easy/grano-did
+- https://github.com/EG-easy/grano-did-client
+- https://github.com/EG-easy/grano-did-exporter
+- https://github.com/EG-easy/grano-did-node
+- https://github.com/EG-easy/grano-did-resolver
